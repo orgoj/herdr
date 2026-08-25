@@ -1,19 +1,29 @@
 ---
 name: herdr
-description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, commands, or another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Requires HERDR_ENV=1."
+description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, commands, or another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Outside HERDR_ENV=1, only explicitly requested `herdr agent list` and syntax help are allowed; all other session inspection and control requires a Herdr-managed pane."
 ---
 
 # Herdr
 
 Herdr organizes terminals into workspaces, tabs, and panes, recognizes coding agents running inside panes, and exposes the current session through the `herdr` CLI.
 
-Before issuing any control command, verify that this agent is running inside a Herdr-managed pane:
+Outside a Herdr-managed pane, the only allowed commands are:
+
+```bash
+herdr --help
+herdr agent
+herdr agent list
+```
+
+Use `herdr agent list` outside Herdr only when the user explicitly requests that read-only inspection. It returns the recognized agents without changing focus, seen state, layout, processes, or agent lifecycle. The first two commands only print syntax.
+
+Before issuing any other `herdr` command, verify that this agent is running inside a Herdr-managed pane:
 
 ```bash
 test "${HERDR_ENV:-}" = 1
 ```
 
-If the check fails, say that you are not running inside Herdr and stop. Do not inspect or control the focused Herdr session from outside Herdr.
+If the check fails, say that you are not running inside Herdr and stop. Do not run any other session inspection or control command from outside Herdr, even if its name sounds read-only; some reads reconcile runtime state. In particular, do not use `--current`, caller-context IDs, or pane-content reads outside a managed pane.
 
 When the check passes, the `herdr` binary in `PATH` talks to the current session. Use it to inspect neighboring work, create terminal layout, start agents and commands, read output, and wait for state changes.
 
@@ -25,7 +35,7 @@ The installed binary is the authority for command syntax. Start with:
 herdr --help
 ```
 
-Then print the relevant command group by running the group without a subcommand:
+After the environment check passes, print the relevant command group by running the group without a subcommand:
 
 ```bash
 herdr agent
@@ -203,6 +213,7 @@ If a larger recent read still does not reveal the completed response, ask the ag
 
 ## Safety and coordination rules
 
+- Outside a Herdr-managed pane, limit session access to an explicitly requested `herdr agent list`; do not broaden this allowlist without auditing the command handler for side effects.
 - Use `--no-focus` for background work unless the user asked to switch context.
 - Use `--current`, an explicit pane ID, or a unique agent name. Do not rely on another client's focused pane.
 - Parse IDs from JSON responses. Do not derive them from sidebar order or examples.
